@@ -10,7 +10,6 @@ pipeline {
     // Define environment variables
     environment {
         SCANNER_HOME = tool 'sonar-scanner'  // Set SonarQube Scanner path
-        CA_CERT = credentials('k8-ca-cert') 
     }
 
     stages {
@@ -149,6 +148,17 @@ pipeline {
                             kubectl get svc -n webapps
                         '''
                     }
+                }
+            }
+        }
+        
+        stage('Port Forward for Local Access') {
+            steps {
+                script {
+                    // Start port forwarding in the background
+                    sh '''
+                    kubectl port-forward svc/mission-ssvc 8091:8080 -n webapps &
+                    '''
                 }
             }
         }
