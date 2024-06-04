@@ -10,6 +10,7 @@ pipeline {
     // Define environment variables
     environment {
         SCANNER_HOME = tool 'sonar-scanner'  // Set SonarQube Scanner path
+        CA_CERT = credentials('k8-ca-cert') 
     }
 
     stages {
@@ -58,13 +59,13 @@ pipeline {
             }
         }
         
-        stage('Deploy artifacts to nexus') {
-            steps {
-                withMaven(globalMavenSettingsConfig: 'maven-file', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
-                        sh 'mvn deploy -DskipTests=true'
-                 }
-            }
-        }
+        // stage('Deploy artifacts to nexus') {
+        //     steps {
+        //         withMaven(globalMavenSettingsConfig: 'maven-file', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+        //                 sh 'mvn deploy -DskipTests=true'
+        //          }
+        //     }
+        // }
         
         stage('Docker image') {
             steps {
@@ -101,28 +102,47 @@ pipeline {
                 script {
                        // This step should not normally be used in your script. Consult the inline help for details.
                         withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                           sh "docker run -d -p 8087:8080 hareesh108/mission:latest"
+                           sh "docker run -d -p 8097:8080 hareesh108/mission:latest"
                     }
                 }
             }
         }
-        
+
         stage('Deploy to K8') {
             steps {
-                    kubeconfig(caCertificate: '/path/to/ca.crt', credentialsId: 'k8-token-mission', serverUrl: 'https://kubernetes.docker.internal:6443') {
-                            sh "kubectl apply -f ds.yml -n webapps"
+                withCredentials([file(credentialsId: 'k8-ca-cert', variable: 'CA_CERT_FILE'), string(credentialsId: 'k8-token-mission', variable: 'K8_TOKEN')]) {
+                    script {
+                        sh '''
+                            export KUBECONFIG=$(mktemp)
+                            kubectl config set-cluster kubernetes --certificate-authority=$CA_CERT_FILE --server=https://kubernetes.docker.internal:6443
+                            kubectl config set-credentials admin --token=$K8_TOKEN
+                            kubectl config set-context default --cluster=kubernetes --user=admin
+                            kubectl config use-context default
+                            kubectl apply -f ds.yml -n webapps
                             sleep 60
+                        '''
                     }
+                }
             }
         }
-        
+
         stage('Verify Deployment') {
             steps {
-                kubeconfig(caCertificate: '/path/to/ca.crt', credentialsId: 'k8-token-mission', serverUrl: 'https://kubernetes.docker.internal:6443') {
-                            sh "kubectl get pods -n webapps"
-                            sh "kubectl get svc -n webapps"
+                withCredentials([file(credentialsId: 'k8-ca-cert', variable: 'CA_CERT_FILE'), string(credentialsId: 'k8-token-mission', variable: 'K8_TOKEN')]) {
+                    script {
+                        sh '''
+                            export KUBECONFIG=$(mktemp)
+                            kubectl config set-cluster kubernetes --certificate-authority=$CA_CERT_FILE --server=https://kubernetes.docker.internal:6443
+                            kubectl config set-credentials admin --token=$K8_TOKEN
+                            kubectl config set-context default --cluster=kubernetes --user=admin
+                            kubectl config use-context default
+                            kubectl get pods -n webapps
+                            kubectl get svc -n webapps
+                        '''
                     }
+                }
             }
         }
     }
+    
 }
