@@ -97,12 +97,21 @@ pipeline {
         }
         
       
-        stage('Doploy to container') {
+        stage('Deploy to Container') {
             steps {
                 script {
-                       // This step should not normally be used in your script. Consult the inline help for details.
-                        withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                           sh "docker run -d -p 8097:8080 hareesh108/mission:latest"
+                    // Stop any existing container using the port
+                    sh '''
+                    EXISTING_CONTAINER=$(docker ps -q --filter ancestor=hareesh108/mission:latest)
+                    if [ ! -z "$EXISTING_CONTAINER" ]; then
+                        docker stop $EXISTING_CONTAINER
+                        docker rm $EXISTING_CONTAINER
+                    fi
+                    '''
+
+                    // Start a new container with the specified port mapping
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                        sh "docker run -d -p 8093:8080 hareesh108/mission:latest"
                     }
                 }
             }
