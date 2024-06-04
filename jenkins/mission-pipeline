@@ -57,12 +57,57 @@ pipeline {
                 sh 'mvn package -DskipTests=true'
             }
         }
-
+        
         stage('Deploy artifacts to nexus') {
             steps {
                 withMaven(globalMavenSettingsConfig: 'maven-file', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
                         sh 'mvn deploy -DskipTests=true'
                  }
+            }
+        }
+        
+        stage('Docker image') {
+            steps {
+                script {
+                       // This step should not normally be used in your script. Consult the inline help for details.
+                        withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+
+                       // some block
+                       sh "docker build -t hareesh108/mission:latest ."
+                    }
+                }
+            }
+        }
+        
+        stage('Trivy docker image Scan') {
+            // Perform security scan using Trivy
+            steps {
+                sh "trivy image --format table -o trivy-image-report.html hareesh108/mission:latest"
+            }
+        }
+        
+        stage('Docker image push') {
+            steps {
+                script {
+                       // This step should not normally be used in your script. Consult the inline help for details.
+                        withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+
+                       sh "docker push hareesh108/mission:latest"
+                    }
+                }
+            }
+        }
+        
+      
+        stage('Doploy to container') {
+            steps {
+                script {
+                       // This step should not normally be used in your script. Consult the inline help for details.
+                        withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+
+                       sh "docker run -d -p 8085:8080 hareesh108/mission:latest"
+                    }
+                }
             }
         }
     }
