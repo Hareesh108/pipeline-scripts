@@ -45,7 +45,7 @@ pipeline {
             // Perform code quality analysis with SonarQube
             steps {
                 withSonarQubeEnv('sonar-qube') {
-                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=Mission -Dsonar.projectName=Mission \
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=Mission1 -Dsonar.projectName=Mission1 \
                         -Dsonar.java.binaries=.'''
                 }
             }
@@ -71,9 +71,7 @@ pipeline {
                 script {
                        // This step should not normally be used in your script. Consult the inline help for details.
                         withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-
-                       // some block
-                       sh "docker build -t hareesh108/mission:latest ."
+                            sh "docker build -t hareesh108/mission:latest ."
                     }
                 }
             }
@@ -91,8 +89,7 @@ pipeline {
                 script {
                        // This step should not normally be used in your script. Consult the inline help for details.
                         withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-
-                       sh "docker push hareesh108/mission:latest"
+                            sh "docker push hareesh108/mission:latest"
                     }
                 }
             }
@@ -104,10 +101,27 @@ pipeline {
                 script {
                        // This step should not normally be used in your script. Consult the inline help for details.
                         withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-
-                       sh "docker run -d -p 8085:8080 hareesh108/mission:latest"
+                           sh "docker run -d -p 8087:8080 hareesh108/mission:latest"
                     }
                 }
+            }
+        }
+        
+        stage('Deploy to K8') {
+            steps {
+                    kubeconfig(caCertificate: '/path/to/ca.crt', credentialsId: 'k8-token-mission', serverUrl: 'https://kubernetes.docker.internal:6443') {
+                            sh "kubectl apply -f ds.yml -n webapps"
+                            sleep 60
+                    }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                kubeconfig(caCertificate: '/path/to/ca.crt', credentialsId: 'k8-token-mission', serverUrl: 'https://kubernetes.docker.internal:6443') {
+                            sh "kubectl get pods -n webapps"
+                            sh "kubectl get svc -n webapps"
+                    }
             }
         }
     }
