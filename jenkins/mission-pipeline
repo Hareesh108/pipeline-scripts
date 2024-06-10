@@ -44,7 +44,7 @@ pipeline {
         stage('Sonar Qube') {
             // Perform code quality analysis with SonarQube
             steps {
-                withSonarQubeEnv('sonar-qube') {
+                withSonarQubeEnv('sonar-token') {
                     sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=Mission1 -Dsonar.projectName=Mission1 \
                         -Dsonar.java.binaries=.'''
                 }
