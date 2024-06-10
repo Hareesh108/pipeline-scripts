@@ -119,7 +119,7 @@ pipeline {
 
         stage('Deploy to K8') {
             steps {
-                withCredentials([string(credentialsId: 'k8-ca-cert', variable: 'CA_CERT_FILE'), string(credentialsId: 'k8-token-mission', variable: 'K8_TOKEN')]) {
+                withCredentials([file(credentialsId: 'k8-ca-cert', variable: 'CA_CERT_FILE'), string(credentialsId: 'k8-token-mission', variable: 'K8_TOKEN')]) {
                     script {
                         sh '''
                             export KUBECONFIG=$(mktemp)
