@@ -147,7 +147,7 @@ pipeline {
                             kubectl config use-context default
                             kubectl get pods -n webapps
                             kubectl get svc -n webapps
-                            kubectl port-forward svc/mission-ssvc 8091:8080 -n webapps &
+                           // kubectl port-forward svc/mission-ssvc 8091:8080 -n webapps &
 
                         '''
                     }
